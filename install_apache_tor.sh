@@ -70,10 +70,21 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}Go to ~/Extracts and choose the onion you like and go inside that directory. Copy the contents of that directory to /var/lib/tor/hidden_service.${NC}"
 
-# Copy the contents to the Tor hidden service directory
-cp -r ~/Extracts/* /var/lib/tor/hidden_service/
-chown debian-tor:debian-tor /var/lib/tor/hidden_service/*
-chmod 600 /var/lib/tor/hidden_service/*
+# Copy the contents of the first folder within ~/Extracts to the Tor hidden service directory
+first_folder=$(find ~/Extracts -mindepth 1 -maxdepth 1 -type d | head -n 1)
+if [ -n "$first_folder" ]; then
+  cp -r "$first_folder"/* /var/lib/tor/hidden_service/
+  chown debian-tor:debian-tor /var/lib/tor/hidden_service/*
+  chmod 600 /var/lib/tor/hidden_service/*
+  echo "Copied contents from $first_folder to /var/lib/tor/hidden_service/"
+else
+  echo "No folders found within ~/Extracts. Make sure to create a folder with the onion address content."
+fi
+
+# Change ownership and permissions for specific files
+chown debian-tor:debian-tor /var/lib/tor/hidden_service/hostname /var/lib/tor/hidden_service/hs_ed25519_public_key /var/lib/tor/hidden_service/hs_ed25519_secret_key
+chmod 600 /var/lib/tor/hidden_service/hostname /var/lib/tor/hidden_service/hs_ed25519_public_key /var/lib/tor/hidden_service/hs_ed25519_secret_key
+
 
 # Restart the Tor service
 systemctl restart tor
