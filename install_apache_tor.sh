@@ -9,6 +9,9 @@ fi
 # Prompt the user for the onion prefix
 read -p "Please enter the prefix of the onion: " onion_prefix
 
+# Prompt the user for the number of .onion addresses they need
+read -p "Enter the number of .onion addresses you need: " onion_count
+
 # Install and configure Apache
 apt-get update
 apt-get install -y apache2
@@ -42,9 +45,14 @@ if ! [ -f "$torrc" ]; then
   exit 1
 fi
 
-# Uncomment the HiddenServiceDir and HiddenServicePort lines
-sed -i 's/#HiddenServiceDir/HiddenServiceDir/' "$torrc"
-sed -i 's/#HiddenServicePort/HiddenServicePort/' "$torrc"
+# Dynamically add HiddenServiceDir and HiddenServicePort lines based on the onion_count
+for ((i = 0; i < onion_count; i++)); do
+  hidden_service_dir="/var/lib/tor/hidden_service_$i"
+  hidden_service_port="80 127.0.0.1:80"
+  
+  echo "HiddenServiceDir $hidden_service_dir" >> "$torrc"
+  echo "HiddenServicePort $hidden_service_port" >> "$torrc"
+done
 
 # Restart Tor to apply the changes
 systemctl restart tor
@@ -61,28 +69,37 @@ cd mkp224o
 ./configure
 make
 
-# Generate the onion address using the provided prefix
-./mkp224o filter "$onion_prefix" -t 4 -v -n 4 -d ~/Extracts/
+# Generate the onion addresses using the provided prefix and user-specified count
+for ((i = 0; i < onion_count; i++)); do
+  ./mkp224o filter "$onion_prefix" -t 4 -v -n 1 -d ~/Extracts
+  onion_address_file="/var/lib/tor/hidden_service_$i/hostname"
+  if [ -f "$onion_address_file" ]; then
+    echo "Your Tor hidden service .onion address for hidden_service_$i is:"
+    cat "$onion_address_file"
+  else
+    echo "Failed to find the .onion address for hidden_service_$i. Check your Tor configuration."
+  fi
+done
 
-# Print instructions for copying the contents to the Tor hidden service directory
+# Print instructions for copying the contents to the Tor hidden service directories
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}Go to ~/Extracts and choose the onion you like and go inside that directory. Copy the contents of that directory to /var/lib/tor/hidden_service.${NC}"
+echo -e "${GREEN}Go to ~/Extracts and choose the onion you like and go inside that directory. Copy the contents of that directory to the corresponding hidden service directories.${NC}"
 
-# Copy the contents to the Tor hidden service directory
-cp -r ~/Extracts/* /var/lib/tor/hidden_service/
-chown debian-tor:debian-tor /var/lib/tor/hidden_service/*
-chmod 600 /var/lib/tor/hidden_service/*
+# Copy the contents of the first folder within ~/Extracts to the Tor hidden service directories
+for ((i = 0; i < onion_count; i++)); do
+  current_folder=$(find ~/Extracts -mindepth 1 -maxdepth 1 -type d | head -n $((i + 1)) | tail -n 1)
+  if [ -n "$current_folder" ]; then
+    cp -r "$current_folder"/* "/var/lib/tor/hidden_service_$i/"
+    chown debian-tor:debian-tor "/var/lib/tor/hidden_service_$i/"*
+    chmod 600 "/var/lib/tor/hidden_service_$i/"*
+    echo "Copied contents from $current_folder to /var/lib/tor/hidden_service_$i/"
+  else
+    echo "No folders found within ~/Extracts for hidden_service_$i. Make sure to create a folder with the onion address content."
+  fi
+done
 
 # Restart the Tor service
 systemctl restart tor
 
-# Provide the .onion address to the user
-onion_address_file="/var/lib/tor/hidden_service/hostname"
-if [ -f "$onion_address_file" ]; then
-  echo "Your Tor hidden service .onion address is:"
-  cat "$onion_address_file"
-else
-  echo "Failed to find the .onion address. Check your Tor configuration."
-fi
