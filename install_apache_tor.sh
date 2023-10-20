@@ -86,6 +86,7 @@ echo -e "${GREEN}Go to ~/Extracts and choose the onion you like and go inside th
 for ((i = 0; i < onion_count; i++)); do
   current_folder=$(find ~/Extracts -mindepth 1 -maxdepth 1 -type d | head -n $((i + 1)) | tail -n 1)
   if [ -n "$current_folder" ]; then
+    mkdir "/var/lib/tor/hidden_service_$i/"
     cp -r "$current_folder"/* "/var/lib/tor/hidden_service_$i/"
     chown debian-tor:debian-tor "/var/lib/tor/hidden_service_$i/"*
     chmod 600 "/var/lib/tor/hidden_service_$i/"*
