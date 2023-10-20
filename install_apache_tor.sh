@@ -45,9 +45,14 @@ if ! [ -f "$torrc" ]; then
   exit 1
 fi
 
-# Comment out existing HiddenServiceDir and HiddenServicePort lines
-sed -i 's/HiddenServiceDir/#HiddenServiceDir/' "$torrc"
-sed -i 's/HiddenServicePort/#HiddenServicePort/' "$torrc"
+# Dynamically add HiddenServiceDir and HiddenServicePort lines based on the onion_count
+for ((i = 0; i < onion_count; i++)); do
+  hidden_service_dir="/var/lib/tor/hidden_service_$i"
+  hidden_service_port="80 127.0.0.1:80"
+  
+  echo "HiddenServiceDir $hidden_service_dir" >> "$torrc"
+  echo "HiddenServicePort $hidden_service_port" >> "$torrc"
+done
 
 # Restart Tor to apply the changes
 systemctl restart tor
