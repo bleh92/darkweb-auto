@@ -103,7 +103,9 @@ done
 
 # Restart the Tor service
 systemctl restart tor
-
+if [ -f "$onion_address_file" ]; then
+  echo "Your Tor hidden service .onion address for hidden_service_$i is:"
+  cat "$onion_address_file"
 else
   echo "Failed to find the .onion address. Check your Tor configuration."
 fi
