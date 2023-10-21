@@ -39,10 +39,26 @@ systemctl start apache2
 apt-get install -y tor
 
 # Open the Tor configuration file for editing
+notice_log="/var/log/tor/notices.log"
+info_log="/var/log/tor/info.log"
 torrc="/etc/tor/torrc"
-if ! [ -f "$torrc" ]; then
-  echo "Tor configuration file not found: $torrc"
-  exit 1
+
+# Check if the torrc file exists
+if [ -f "$torrc" ]; then
+    # Append the log directives to the torrc file
+    echo "Log notice file $notice_log" >> "$torrc"
+    echo "Log info file $info_log" >> "$torrc"
+    echo "Log notice syslog" >> "$torrc"  # Optionally, you can log to syslog as well
+    echo "Log info syslog" >> "$torrc"    # Optionally, you can log to syslog as well
+    echo "Log debug syslog" >> "$torrc"   # Optionally, you can log to syslog as well
+    echo "Log debug file /var/log/tor/debug.log" >> "$torrc"  # Optionally, you can log to a debug file
+    echo "Log debug file /var/log/tor/debug.log" >> "$torrc"  # Optionally, you can log to a debug file
+    echo "Log debug file /var/log/tor/debug.log" >> "$torrc"  # Optionally, you can log to a debug file
+
+    echo "Log debug file /var/log/tor/debug.log" >> "$torrc"  # Optionally, you can log to a debug file
+else
+    echo "Error: Tor configuration file $torrc not found."
+    exit 1
 fi
 
 # Dynamically add HiddenServiceDir and HiddenServicePort lines based on the onion_count
@@ -53,6 +69,8 @@ for ((i = 0; i < onion_count; i++)); do
   echo "HiddenServiceDir $hidden_service_dir" >> "$torrc"
   echo "HiddenServicePort $hidden_service_port" >> "$torrc"
 done
+
+
 
 # Restart Tor to apply the changes
 systemctl restart tor
