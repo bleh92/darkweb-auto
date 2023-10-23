@@ -1,40 +1,42 @@
 #!/bin/bash
 
-# Check if the user has root privileges
+# Check if the script is run as root
 if [ "$EUID" -ne 0 ]; then
-  echo "Please run this script with administrative privileges (e.g., using sudo)."
+  echo "Please run this script as root."
   exit 1
 fi
 
-# Stop and disable Apache service
-systemctl stop apache2   # For Debian/Ubuntu
-# systemctl stop httpd   # For CentOS
-systemctl disable apache2   # For Debian/Ubuntu
-# systemctl disable httpd   # For CentOS
+# Stop and remove Tor
+systemctl stop tor
+apt-get remove --purge -y tor
+rm -rf /var/log/tor /var/lib/tor
 
-# Remove Apache packages and configuration files
-apt purge apache2*   # For Debian/Ubuntu
-# yum remove httpd*   # For CentOS
-apt autoremove   # For Debian/Ubuntu (removes unused packages)
-# yum autoremove   # For CentOS
+# Stop and remove Apache
+systemctl stop apache2
+apt-get remove --purge -y apache2
+rm -rf /etc/apache2 /var/www/html
 
-# Delete Apache configuration files and data
-rm -rf /etc/apache2
-# rm -rf /etc/httpd   # For CentOS
-rm -rf /var/www/html
+# Remove mkp224o and its dependencies
+apt-get remove --purge -y build-essential libssl-dev libsodium-dev autoconf git
+rm -rf mkp224o
 
-# Stop and disable Tor service
-systemctl stop tor   # For Debian/Ubuntu
-# systemctl stop tor   # For CentOS
-systemctl disable tor   # For Debian/Ubuntu
-# systemctl disable tor   # For CentOS
+# Clean up SSL certificate
+rm -f /etc/ssl/private/apache-selfsigned.key /etc/ssl/certs/apache-selfsigned.crt
 
-# Remove Tor package
-apt purge tor   # For Debian/Ubuntu
-# yum remove tor   # For CentOS
+# Remove changes made to /etc/apache2/ports.conf
+sed -i 's/Listen 127.0.0.1:80/Listen 0.0.0.0:80/' /etc/apache2/ports.conf
+sed -i 's/Listen 127.0.0.1:443/Listen 0.0.0.0:443/' /etc/apache2/ports.conf
 
-# Delete Tor configuration files and data
-rm -rf /etc/tor
-rm -rf /var/lib/tor
+# Clean up Tor configuration
+torrc="/etc/tor/torrc"
+sed -i '/Log/d' "$torrc"
+sed -i '/HiddenServiceDir/d' "$torrc"
+sed -i '/HiddenServicePort/d' "$torrc"
 
-echo "Apache and Tor have been uninstalled and purged."
+# Remove hidden service directories
+onion_count=$(grep -c 'HiddenServiceDir' "$torrc")
+for i in $(seq 0 $onion_count); do
+  rm -rf "/var/lib/tor/hidden_service_$i"
+done
+
+echo "Reverted changes made by the original script."
